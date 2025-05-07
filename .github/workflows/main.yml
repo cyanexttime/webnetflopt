@@ -103,10 +103,9 @@ jobs:
           docker compose exec -T php bash -c "sudo mkdir -p /application/bootstrap/cache"
           docker compose exec -T php bash -c "sudo chmod -R 777 /application/storage /application/bootstrap/cache"
           
-      - name: Copy .env to container
+      - name: Create .env inside container
         run: |
-          cp .env.example .env
-          docker cp .env php:/application/.env
+          docker compose exec -T php cp /application/.env.example /application/.env
       
       # Laravel setup and testing
       - name: Set application key
