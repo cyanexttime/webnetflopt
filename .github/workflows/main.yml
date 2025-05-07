@@ -61,8 +61,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-composer-
 
-      - name: Fix permissions inside container
-        run: docker compose exec -T php bash -c "chmod -R ug+rw /application && chown -R www-data:www-data /application"
+      - name: Fix permissions inside container as root
+        run: docker compose exec -T php bash -c "chmod -R 777 /application && chown -R root:root /application"
 
       - name: Install Composer dependencies
         run: docker compose exec -T php composer install --no-interaction --prefer-dist --optimize-autoloader
