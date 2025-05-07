@@ -1,4 +1,4 @@
-name: Laravel Docker CI
+name: Laravel Docker CI and Push
 
 on:
   push:
@@ -7,31 +7,48 @@ on:
     branches: [ "main" ]
 
 jobs:
-  laravel-docker-tests:
+  laravel-docker-tests-and-push:
     runs-on: ubuntu-latest
-    services:
-      docker:
-        image: docker:dind
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Set up Docker
+    - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
+
+    - name: Login to DockerHub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
 
     - name: Build and run containers
       run: docker compose up -d --build
 
     - name: Wait for services to be healthy
       run: sleep 20
+      
+    - name: Copy .env.example
+      run: cp .env.example .env
 
-    - name: Run Laravel migrations
+    - name: Generate app key
+      run: docker compose exec php php artisan key:generate
+
+    - name: Run migrations
       run: docker compose exec php php artisan migrate --force
 
-    - name: Run Laravel tests
+    - name: Run tests
       run: docker compose exec php php artisan test
 
     - name: Stop containers
       if: always()
       run: docker compose down
+
+    - name: Build final Docker image for app
+      run: |
+        docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/laravel-app:latest ./docker
+
+    - name: Push Docker image to DockerHub
+      run: |
+        docker push ${{ secrets.DOCKERHUB_USERNAME }}/laravel-app:latest
