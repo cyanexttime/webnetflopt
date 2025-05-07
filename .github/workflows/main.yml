@@ -62,7 +62,8 @@ jobs:
             ${{ runner.os }}-composer-
 
       - name: Fix permissions inside container as root
-        run: docker compose exec -T php bash -c "chmod -R 777 /application && chown -R root:root /application"
+        run: docker compose exec -T php bash -c "sudo chmod -R 777 /application && sudo chown -R root:root /application"
+
 
       - name: Install Composer dependencies
         run: docker compose exec -T php composer install --no-interaction --prefer-dist --optimize-autoloader
