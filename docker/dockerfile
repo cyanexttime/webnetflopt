@@ -1,7 +1,7 @@
-# Sử dụng PHP-FPM chính thức làm image gốc
+# Use official PHP-FPM as base image
 FROM php:8.2-fpm
 
-# Cài đặt các tiện ích bổ sung cần thiết
+# Install necessary dependencies
 RUN apt-get update && apt-get install -y \
     build-essential \
     libpng-dev \
@@ -15,39 +15,39 @@ RUN apt-get update && apt-get install -y \
     git \
     curl \
     libonig-dev \
-    libzip-dev
+    libzip-dev \
+    sudo
 
-# Cài đặt các PHP extension
+# Install PHP extensions
 RUN docker-php-ext-install pdo_mysql mbstring zip exif pcntl
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg
 RUN docker-php-ext-install gd
 
-# Cài đặt Composer
+# Install Composer
 RUN curl -sS https://getcomposer.org/installer | php && \
     mv composer.phar /usr/local/bin/composer
 
-# Tạo thư mục làm việc và cấp quyền
-RUN mkdir /application && chown 1000:1000 -R /application
+# Create application directory
+RUN mkdir -p /application
 
-# Đặt thư mục làm việc
+# Create a user with UID 1000 (standard first user on Ubuntu)
+RUN groupadd -g 1000 appgroup && \
+    useradd -u 1000 -g appgroup -m appuser && \
+    usermod -aG sudo appuser && \
+    echo "appuser ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+# Give application directory proper permissions
+RUN chown -R appuser:appgroup /application && \
+    chmod -R 775 /application
+
+# Set working directory
 WORKDIR /application
 
-# Copy toàn bộ mã nguồn vào thư mục làm việc
-COPY . /application
-
-# Cấp quyền cho web
-RUN chown -R www-data:www-data /application
-RUN chmod -R 775 /application
-
-# Tạo các thư mục cần thiết và cấp quyền cho thư mục storage và bootstrap/cache
-RUN mkdir -p /application/storage /application/bootstrap/cache && \
-    chown -R www-data:www-data /application/storage /application/bootstrap/cache
-# Tạo nhóm người dùng và người dùng mới
-RUN groupadd -g 1000 appgroup && \
-    useradd -u 1000 -g appgroup -m appuser
-# Đặt người dùng mặc định
+# Switch to appuser
 USER appuser
 
-# Expose cổng 9000 và chạy PHP-FPM
+# Expose port 9000 for PHP-FPM
 EXPOSE 9000
+
+# Start PHP-FPM
 CMD ["php-fpm"]
