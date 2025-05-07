@@ -1,0 +1,82 @@
+name: Laravel CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  laravel-tests:
+    runs-on: ubuntu-latest
+    services:
+      docker:
+        image: docker:24.0.5
+        options: --privileged
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./docker
+          file: ./docker/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/laravel-app:latest
+
+      - name: Start Docker Compose
+        run: docker compose up -d
+
+      - name: Wait for MySQL to be ready
+        run: |
+          echo "Waiting for MySQL to be ready..."
+          for i in {30..0}; do
+            if docker exec db mysqladmin ping -h"db" --silent; then
+              echo "MySQL is ready!"
+              break
+            fi
+            echo "Waiting for database..."
+            sleep 2
+          done
+
+      # ✨ Speed up composer install by using cache
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-
+
+      # - name: Fix permissions inside container as root
+      #   run: docker compose exec -T php bash -c "sudo chmod -R 777 /application && sudo chown -R root:root /application"
+
+
+      - name: Install Composer dependencies
+        run: docker compose exec -T php composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Set application key
+        run: docker compose exec -T php php artisan key:generate
+
+      - name: Run migrations
+        run: docker compose exec -T php php artisan migrate --force
+
+      - name: Run Laravel tests
+        run: docker compose exec -T php php artisan test
+
+      - name: Shut down Docker Compose
+        if: always()
+        run: docker compose down
