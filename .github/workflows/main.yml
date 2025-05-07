@@ -33,11 +33,14 @@ jobs:
       - name: Set up MySQL
         uses: mirromutth/mysql-action@v1.1
         with:
+          host port: 3306
+          container port: 3306
           mysql version: '8.0'
           mysql database: 'app_db'
           mysql user: 'root'
           mysql password: '123456789'
-          mysql port: 3306
+          character set server: 'utf8mb4'
+          collation server: 'utf8mb4_unicode_ci'
           
       - name: Set directory permissions
         run: |
@@ -46,6 +49,14 @@ jobs:
       - name: Update database host in .env
         run: |
           sed -i 's/DB_HOST=db/DB_HOST=127.0.0.1/g' .env
+          
+      - name: Wait for MySQL to be ready
+        run: |
+          while ! mysqladmin ping -h"127.0.0.1" -P"3306" --silent; do
+            echo "Waiting for MySQL to be ready..."
+            sleep 2
+          done
+          echo "MySQL is ready!"
       
       - name: Run migrations
         run: |
