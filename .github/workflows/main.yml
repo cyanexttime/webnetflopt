@@ -38,6 +38,11 @@ jobs:
     - name: Composer install
       run: composer install --prefer-dist --no-interaction --no-scripts --optimize-autoloader
 
+    - name: Fix permissions for Laravel folders
+      run: |
+        docker compose exec php chmod -R ug+rw storage bootstrap/cache
+        docker compose exec php chown -R www-data:www-data storage bootstrap/cache
+
     - name: Dump autoload
       run: composer dump-autoload
 
