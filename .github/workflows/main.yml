@@ -108,6 +108,9 @@ jobs:
       - name: Run migrations
         run: docker compose exec -T php php artisan migrate --force
       
+      - name: Check if UserFactory exists
+        run: docker compose exec -T php ls -la /application/database/factories
+
       - name: Run Laravel tests
         run: docker compose exec -T php php artisan test
       
