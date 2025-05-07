@@ -79,6 +79,11 @@ jobs:
         run: |
           docker cp ./ php:/application/
           docker compose exec -T php sudo chown -R appuser:appgroup /application
+          
+      - name: Copy .env to container
+        run: |
+          cp .env.example .env
+          docker cp .env php:/application/.env
       
       # Fix Git permissions for CI
       - name: Fix Git permissions
