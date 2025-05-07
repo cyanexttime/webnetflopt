@@ -35,6 +35,12 @@ jobs:
     - name: Generate app key
       run: docker compose exec --user root php php artisan key:generate
     
+    - name: Composer install
+      run: composer install --prefer-dist --no-interaction --no-scripts --optimize-autoloader
+
+    - name: Dump autoload
+      run: composer dump-autoload
+
     - name: Run migrations
       run: docker compose exec php php artisan migrate --force
 
