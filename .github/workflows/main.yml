@@ -28,13 +28,14 @@ jobs:
 
     - name: Wait for services to be healthy
       run: sleep 20
-      
-    - name: Copy .env.example
-      run: cp .env.example .env
+    
 
     - name: Generate app key
       run: docker compose exec php php artisan key:generate
-
+    
+    - name: Copy .env.example
+      run: cp .env.example .env
+    
     - name: Run migrations
       run: docker compose exec php php artisan migrate --force
 
