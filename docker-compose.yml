@@ -13,6 +13,7 @@ services:
 
   php:
     build: ./docker
+    image: randytuan098/php:latest
     volumes:
       - .:/application
       - ./docker/php/custom.ini:/usr/local/etc/php/conf.d/custom.ini
