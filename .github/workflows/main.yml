@@ -1,0 +1,55 @@
+name: Build and Push using Docker Compose
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    env:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to DockerHub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ env.DOCKERHUB_USERNAME }}
+        password: ${{ env.DOCKERHUB_TOKEN }}
+
+    - name: Build images using Docker Compose
+      run: |
+        docker compose build
+
+    - name: Tag and Push custom images
+      run: |
+        docker tag $(docker compose images -q php) $DOCKERHUB_USERNAME/php:latest
+        docker push $DOCKERHUB_USERNAME/php:latest
+
+    - name: Pull and Push official images
+      run: |
+        docker pull nginx:1.17.4-alpine
+        docker tag nginx:1.17.4-alpine $DOCKERHUB_USERNAME/nginx:1.17.4-alpine
+        docker push $DOCKERHUB_USERNAME/nginx:1.17.4-alpine
+
+        docker pull mariadb:10.5.8
+        docker tag mariadb:10.5.8 $DOCKERHUB_USERNAME/mariadb:10.5.8
+        docker push $DOCKERHUB_USERNAME/mariadb:10.5.8
+
+        docker pull redis:5.0.6-alpine
+        docker tag redis:5.0.6-alpine $DOCKERHUB_USERNAME/redis:5.0.6-alpine
+        docker push $DOCKERHUB_USERNAME/redis:5.0.6-alpine
+
+        docker pull phpmyadmin
+        docker tag phpmyadmin $DOCKERHUB_USERNAME/phpmyadmin:latest
+        docker push $DOCKERHUB_USERNAME/phpmyadmin:latest
