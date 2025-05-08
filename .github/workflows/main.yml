@@ -31,9 +31,8 @@ jobs:
       run: |
         docker compose build
 
-    - name: Tag and Push custom images
+    - name: Push PHP image to Docker Hub
       run: |
-        docker tag $(docker compose images -q php) $DOCKERHUB_USERNAME/php:latest
         docker push $DOCKERHUB_USERNAME/php:latest
 
     - name: Pull and Push official images
