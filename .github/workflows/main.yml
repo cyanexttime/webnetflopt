@@ -1,65 +1,58 @@
-name: Laravel Docker CI and Push
+name: Build and Push Docker Images
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    branches:
+      - main  # or 'master', depending on your repo
+  workflow_dispatch:  # Allow manual trigger
 
 jobs:
-  laravel-docker-tests-and-push:
+  build-and-push:
     runs-on: ubuntu-latest
 
+    env:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+
     steps:
-    - name: Checkout repository
+    - name: Checkout code
       uses: actions/checkout@v4
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
-    - name: Login to DockerHub
+    - name: Log in to DockerHub
       uses: docker/login-action@v3
       with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
+        username: ${{ env.DOCKERHUB_USERNAME }}
+        password: ${{ env.DOCKERHUB_TOKEN }}
 
-    - name: Build and run containers
-      run: docker compose up -d --build
+    - name: Build and push nginx image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./docker-compose.yaml
+        push: true
+        tags: ${{ env.DOCKERHUB_USERNAME }}/nginx:latest
 
-    - name: Wait for services to be healthy
-      run: sleep 20
+    - name: Build and push php image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./docker
+        push: true
+        tags: ${{ env.DOCKERHUB_USERNAME }}/php:latest
 
-    - name: Copy .env.example
-      run: cp .env.example .env
-    
-    - name: Generate app key
-      run: docker compose exec --user root php php artisan key:generate
-    
-    - name: Composer install
-      run: composer install --prefer-dist --no-interaction --no-scripts --optimize-autoloader
-
-    - name: Fix permissions for Laravel folders
+    - name: Push mariadb (db) and redis
       run: |
-        docker compose exec php chmod -R ug+rw storage bootstrap/cache
-        docker compose exec php chown -R www-data:www-data storage bootstrap/cache
+        docker pull mariadb:10.5.8
+        docker pull redis:5.0.6-alpine
+        docker tag mariadb:10.5.8 $DOCKERHUB_USERNAME/mariadb:10.5.8
+        docker tag redis:5.0.6-alpine $DOCKERHUB_USERNAME/redis:5.0.6-alpine
+        docker push $DOCKERHUB_USERNAME/mariadb:10.5.8
+        docker push $DOCKERHUB_USERNAME/redis:5.0.6-alpine
 
-    - name: Dump autoload
-      run: composer dump-autoload
-
-    - name: Run migrations
-      run: docker compose exec php php artisan migrate --force
-
-    - name: Run tests
-      run: docker compose exec php php artisan test
-
-    - name: Stop containers
-      if: always()
-      run: docker compose down
-
-    - name: Build final Docker image for app
+    - name: Push phpmyadmin
       run: |
-        docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/laravel-app:latest ./docker
-
-    - name: Push Docker image to DockerHub
-      run: |
-        docker push ${{ secrets.DOCKERHUB_USERNAME }}/laravel-app:latest
+        docker pull phpmyadmin
+        docker tag phpmyadmin $DOCKERHUB_USERNAME/phpmyadmin:latest
+        docker push $DOCKERHUB_USERNAME/phpmyadmin:latest
