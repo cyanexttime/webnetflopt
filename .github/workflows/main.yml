@@ -33,7 +33,7 @@ jobs:
 
     - name: Tag and Push custom images
       run: |
-        docker tag $(docker-compose images -q php) $DOCKERHUB_USERNAME/php:latest
+        docker tag $(docker compose images -q php) $DOCKERHUB_USERNAME/php:latest
         docker push $DOCKERHUB_USERNAME/php:latest
 
     - name: Pull and Push official images
