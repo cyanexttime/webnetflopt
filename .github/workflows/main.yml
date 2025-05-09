@@ -25,7 +25,7 @@ jobs:
       - name: Determine deployment target (blue/green)
         id: get-env
         run: |
-          CURRENT=$(cat active_env.txt)
+          CURRENT=$( [ -f active_env.txt ] && cat active_env.txt || echo "green" )
           echo "CURRENT=$CURRENT" >> $GITHUB_ENV
           if [ "$CURRENT" = "green" ]; then
             echo "TARGET=blue" >> $GITHUB_ENV
@@ -33,20 +33,17 @@ jobs:
             echo "TARGET=green" >> $GITHUB_ENV
           fi
 
-      - name: Update active_env.txt
-        run: echo "${{ env.TARGET }}" > active_env.txt
-
       - name: Build new app container
         run: docker compose build php-${{ env.TARGET }}
 
       - name: Start updated services
         run: docker compose up -d php-${{ env.TARGET }} nginx
 
-      - name: Wait for healthcheck
+      - name: Wait for new service to become healthy
         run: |
           echo "Waiting for ${{ env.TARGET }} to become healthy..."
           for i in {1..15}; do
-            STATUS=$(docker inspect --format='{{.State.Health.Status}}' php-${{ env.TARGET }} || echo "starting")
+            STATUS=$(docker inspect --format='{{.State.Health.Status}}' yourproject_php-${{ env.TARGET }}_1 || echo "starting")
             echo "Health status: $STATUS"
             if [ "$STATUS" = "healthy" ]; then
               echo "Container is healthy!"
@@ -57,30 +54,17 @@ jobs:
           echo "Health check failed!"
           exit 1
 
-
-      - name: Switch nginx to new version
+      - name: Update active_env.txt
         if: success()
-        run: |
-          if [ "${{ env.TARGET }}" = "green" ]; then
-            docker exec nginx touch /etc/nginx/active_green
-          else
-            docker exec nginx rm -f /etc/nginx/active_green
-          fi
-          docker exec nginx nginx -s reload
+        run: echo "${{ env.TARGET }}" > active_env.txt
 
       - name: Cleanup old service
         if: success()
         run: docker compose stop php-${{ env.CURRENT }}
 
-      - name: Rollback on failure
+      - name: Rollback to previous version if new one is unhealthy
         if: failure()
         run: |
           echo "Rolling back to previous version..."
           docker compose stop php-${{ env.TARGET }}
-          docker compose up -d php-${{ env.CURRENT }}
-          if [ "${{ env.CURRENT }}" = "green" ]; then
-            docker exec nginx touch /etc/nginx/active_green
-          else
-            docker exec nginx rm -f /etc/nginx/active_green
-          fi
-          docker exec nginx nginx -s reload
+          docker compose up -d php-${{ env.CURRENT }} nginx
