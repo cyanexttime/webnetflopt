@@ -30,10 +30,10 @@ jobs:
         run: echo "${{ env.TARGET }}" > active_env.txt
 
       - name: Build new app container
-        run: docker-compose build php-${{ env.TARGET }}
+        run: docker compose build php-${{ env.TARGET }}
 
       - name: Start updated services
-        run: docker-compose up -d php-${{ env.TARGET }} nginx
+        run: docker compose up -d php-${{ env.TARGET }} nginx
 
       - name: Cleanup old service
-        run: docker-compose stop php-${{ env.CURRENT }}
+        run: docker compose stop php-${{ env.CURRENT }}
