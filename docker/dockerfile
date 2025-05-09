@@ -27,7 +27,7 @@ RUN curl -sS https://getcomposer.org/installer | php && \
     mv composer.phar /usr/local/bin/composer
 
 # Tạo thư mục làm việc và cấp quyền
-RUN mkdir /application && chown 1000:1000 -R /application
+RUN mkdir /application && chown -R www-data:www-data /application
 
 # Đặt thư mục làm việc
 WORKDIR /application
@@ -35,16 +35,21 @@ WORKDIR /application
 # Copy toàn bộ mã nguồn vào thư mục làm việc
 COPY . /application
 
-# Cấp quyền cho web
-RUN chown -R www-data:www-data /application
-RUN chmod -R 775 /application
-
-# Tạo các thư mục cần thiết và cấp quyền cho thư mục storage và bootstrap/cache
-RUN mkdir -p /application/storage /application/bootstrap/cache && \
-    chown -R www-data:www-data /application/storage /application/bootstrap/cache
 # Tạo nhóm người dùng và người dùng mới
 RUN groupadd -g 1000 appgroup && \
     useradd -u 1000 -g appgroup -m appuser
+
+# Override PHP-FPM to run as appuser
+USER root
+RUN sed -i 's/^user = .*/user = appuser/' /usr/local/etc/php-fpm.d/www.conf && \
+    sed -i 's/^group = .*/group = appgroup/' /usr/local/etc/php-fpm.d/www.conf
+
+# Đặt quyền cho thư mục
+RUN chown -R appuser:appgroup /application && \
+    chmod -R 775 /application && \
+    mkdir -p /application/storage /application/bootstrap/cache && \
+    chown -R appuser:appgroup /application/storage /application/bootstrap/cache
+
 # Đặt người dùng mặc định
 USER appuser
 
