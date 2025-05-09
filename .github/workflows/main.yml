@@ -43,7 +43,7 @@ jobs:
         run: |
           echo "Waiting for ${{ env.TARGET }} to become healthy..."
           for i in {1..15}; do
-            STATUS=$(docker inspect --format='{{.State.Health.Status}}' webnetflopt_php-${{ env.TARGET }}_1 || echo "starting")
+            STATUS=$(docker inspect --format='{{.State.Health.Status}}' webnetflopt-php-${{ env.TARGET }}_1 || echo "starting")
             echo "Health status: $STATUS"
             if [ "$STATUS" = "healthy" ]; then
               echo "Container is healthy!"
