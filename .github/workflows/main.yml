@@ -15,7 +15,13 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
-
+        
+      - name: Create active_env.txt if missing
+        run: |
+          if [ ! -f active_env.txt ]; then
+          echo "green" > active_env.txt
+          fi
+          
       - name: Determine deployment target (blue/green)
         id: get-env
         run: |
