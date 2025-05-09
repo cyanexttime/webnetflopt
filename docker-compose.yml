@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   nginx:
     image: nginx:1.17.4-alpine
@@ -7,15 +5,19 @@ services:
       - 8888:80
     volumes:
       - ./docker/config/default.conf:/etc/nginx/conf.d/default.conf
-      - nginx_data:/etc/nginx   # Volume to store active_green marker
     depends_on:
       - php-blue
       - php-green
 
   php-blue:
     build: ./docker
-    container_name: php-blue
     image: randytuan098/php:blue
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep php-fpm || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     volumes:
       - ./src:/application
       - ./docker/php/custom.ini:/usr/local/etc/php/conf.d/custom.ini
@@ -23,21 +25,20 @@ services:
       - APP_COLOR=blue
       - DB_HOST=db
       - DB_USERNAME=root
-      - DB_PASS=123456789
+      - DB_PASS=secret
       - DB_NAME=app_db
     expose:
       - "9000"
+
+  php-green:
+    build: ./docker
+    image: randytuan098/php:green
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/health.php"]
+      test: ["CMD-SHELL", "pgrep php-fpm || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 10s
-
-  php-green:
-    build: ./docker
-    container_name: php-green
-    image: randytuan098/php:green
     volumes:
       - ./src:/application
       - ./docker/php/custom.ini:/usr/local/etc/php/conf.d/custom.ini
@@ -45,16 +46,10 @@ services:
       - APP_COLOR=green
       - DB_HOST=db
       - DB_USERNAME=root
-      - DB_PASS=123456789
+      - DB_PASS=secret
       - DB_NAME=app_db
     expose:
       - "9000"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/health.php"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
 
   db:
     image: mariadb:10.5.8
@@ -77,12 +72,6 @@ services:
     image: phpmyadmin
     ports:
       - 8082:80
-    environment:
-      - PMA_HOST=db
-      - PMA_PORT=3306
-    depends_on:
-      - db
 
 volumes:
   db_data:
-  nginx_data:
