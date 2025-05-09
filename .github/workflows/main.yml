@@ -43,7 +43,13 @@ jobs:
         run: |
           echo "Waiting for ${{ env.TARGET }} to become healthy..."
           for i in {1..15}; do
-            STATUS=$(docker inspect --format='{{.State.Health.Status}}' webnetflopt-php-${{ env.TARGET }}-1 || echo "starting")
+            CONTAINER_ID=$(docker compose ps -q php-${{ env.TARGET }})
+            if [ -z "$CONTAINER_ID" ]; then
+              echo "No container found!"
+              exit 1
+            fi
+
+            STATUS=$(docker inspect --format='{{.State.Health.Status}}' $CONTAINER_ID || echo "starting")
             echo "Health status: $STATUS"
             if [ "$STATUS" = "healthy" ]; then
               echo "Container is healthy!"
