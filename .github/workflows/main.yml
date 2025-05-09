@@ -19,13 +19,14 @@ jobs:
       - name: Create active_env.txt if missing
         run: |
           if [ ! -f active_env.txt ]; then
-          echo "green" > active_env.txt
+            echo "green" > active_env.txt
           fi
           
       - name: Determine deployment target (blue/green)
         id: get-env
         run: |
-          CURRENT=$(cat active_env.txt || echo "green")
+          CURRENT=$( [ -f active_env.txt ] && cat active_env.txt || echo "green" )
+          echo "CURRENT=$CURRENT" >> $GITHUB_ENV
           if [ "$CURRENT" = "green" ]; then
             echo "TARGET=blue" >> $GITHUB_ENV
           else
