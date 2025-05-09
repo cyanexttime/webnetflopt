@@ -1,54 +1,39 @@
-name: Build and Push using Docker Compose
+name: Blue/Green Deployment
 
 on:
   push:
     branches:
       - main
-  workflow_dispatch:
 
 jobs:
-  build-and-push:
+  deploy:
     runs-on: ubuntu-latest
 
-    env:
-      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
 
-    - name: Log in to DockerHub
-      uses: docker/login-action@v3
-      with:
-        username: ${{ env.DOCKERHUB_USERNAME }}
-        password: ${{ env.DOCKERHUB_TOKEN }}
+      - name: Determine deployment target (blue/green)
+        id: get-env
+        run: |
+          CURRENT=$(cat active_env.txt || echo "green")
+          if [ "$CURRENT" = "green" ]; then
+            echo "TARGET=blue" >> $GITHUB_ENV
+          else
+            echo "TARGET=green" >> $GITHUB_ENV
+          fi
 
-    - name: Build images using Docker Compose
-      run: |
-        docker compose build
+      - name: Update active_env.txt
+        run: echo "${{ env.TARGET }}" > active_env.txt
 
-    - name: Push PHP image to Docker Hub
-      run: |
-        docker push $DOCKERHUB_USERNAME/php:latest
+      - name: Build new app container
+        run: docker-compose build php-${{ env.TARGET }}
 
-    - name: Pull and Push official images
-      run: |
-        docker pull nginx:1.17.4-alpine
-        docker tag nginx:1.17.4-alpine $DOCKERHUB_USERNAME/nginx:1.17.4-alpine
-        docker push $DOCKERHUB_USERNAME/nginx:1.17.4-alpine
+      - name: Start updated services
+        run: docker-compose up -d php-${{ env.TARGET }} nginx
 
-        docker pull mariadb:10.5.8
-        docker tag mariadb:10.5.8 $DOCKERHUB_USERNAME/mariadb:10.5.8
-        docker push $DOCKERHUB_USERNAME/mariadb:10.5.8
-
-        docker pull redis:5.0.6-alpine
-        docker tag redis:5.0.6-alpine $DOCKERHUB_USERNAME/redis:5.0.6-alpine
-        docker push $DOCKERHUB_USERNAME/redis:5.0.6-alpine
-
-        docker pull phpmyadmin
-        docker tag phpmyadmin $DOCKERHUB_USERNAME/phpmyadmin:latest
-        docker push $DOCKERHUB_USERNAME/phpmyadmin:latest
+      - name: Cleanup old service
+        run: docker-compose stop php-${{ env.CURRENT }}
